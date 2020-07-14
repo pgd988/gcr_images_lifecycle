@@ -1,13 +1,26 @@
 #!/bin/bash
-PROJECT=""
+#set -eou pipefail
+
+### Args parcing
+for ARGUMENT in "$@"
+do
+    KEY=$(echo $ARGUMENT | cut -f1 -d=)
+    VALUE=$(echo $ARGUMENT | cut -f2 -d=)
+    case "$KEY" in
+            --project)              PROJECT=${VALUE} ;;
+            --threshold)            THRESHOLD=${VALUE} ;;
+            --auth-key)             AUTH_KEY=${VALUE} ;;
+            *)
+    esac
+done
+
 START=$(date +%s.%N)
 REGISTRY="gcr.io/$PROJECT"
-#set -eou pipefail
-PATH_File="./"
-IMAGE=( `cat $PATH_File/images.lst` )
-Num_File="$PATH_File/img_clean.log"
-BRANCHES=( `cat $PATH_File/branches.lst` )
-ContainersThreshold=2
+CURRENT_PATH="$( cd $( dirname ${BASH_SOURCE[0]} ) >/dev/null 2>&1 && pwd )"
+IMAGE=( `cat $CURRENT_PATH/images.lst` )
+Num_File="$CURRENT_PATH/img_clean.log"
+BRANCHES=( `cat $CURRENT_PATH/branches.lst` )
+#THRESHOLD=2
 
 ##########################################################################################################################
 if [ ! -f $Num_File ]; then touch $Num_File; else mv $Num_File $Num_File-`date +%Y%m%e%H%M%S` && touch $Num_File; fi
@@ -19,23 +32,16 @@ if [ ${#Count[@]} -gt 2 ]; then
 fi
 ##########################################################################################################################
 
-/usr/bin/gcloud auth activate-service-account --key-file=./gcr.key --project $PROJECT
+/usr/bin/gcloud auth activate-service-account --key-file=$CURRENT_PATH/$AUTH_KEY --project $PROJECT
 
 ##########################################################################################################################
 
 delete(){
     COUNTALL=${#digest[@]}
-
-#    echo ""
-#    echo "IMG: $img"
-#    echo "ContainerALL: ${digest[@]}"
-#    echo "Count: $COUNTALL"
-#    echo "Tag: ${Cont_TAG[@]}"
-
-    if [[ ${COUNTALL} -gt ${ContainersThreshold} ]]; then
-      Include=${digest[*]::${COUNTALL}-${ContainersThreshold}};
-      Exclude=${digest[*]:${COUNTALL}-${ContainersThreshold}};
-    elif [[ ${COUNTALL} -eq ${ContainersThreshold} ]]; then
+    if [[ ${COUNTALL} -gt ${THRESHOLD} ]]; then
+      Include=${digest[*]::${COUNTALL}-${THRESHOLD}};
+      Exclude=${digest[*]:${COUNTALL}-${THRESHOLD}};
+    elif [[ ${COUNTALL} -eq ${THRESHOLD} ]]; then
       Include="";
       Exclude=${digest[*]};
     else
@@ -92,4 +98,4 @@ DIFF=`echo "$END-$START" | bc -l`
   h=`bc <<< "$DIFF/60/60"`
   m=`bc <<< "$DIFF/60%60"`
   s=`bc <<< "$DIFF%60%60"`
-( set -x; echo "Time execution of the script is $DIFF s. ($h:$m:$s)" >> $Num_File )
+( set -x; echo "Script's execution time is $DIFF sec. ($h:$m:$s)" >> $Num_File )

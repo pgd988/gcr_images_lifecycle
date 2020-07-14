@@ -1,10 +1,23 @@
 #!/bin/bash
+
+CURRENT_PATH="$( cd $( dirname ${BASH_SOURCE[0]} ) >/dev/null 2>&1 && pwd )"
+### Args parcing
+for ARGUMENT in "$@"
+do
+    KEY=$(echo $ARGUMENT | cut -f1 -d=)
+    VALUE=$(echo $ARGUMENT | cut -f2 -d=)
+    case "$KEY" in
+            --project)              PROJECT=${VALUE} ;;
+            --auth-key)                 AUTH_KEY=${VALUE} ;;
+            *)
+    esac
+done
+List_File="$CURRENT_PATH/image_list_template.tmp"
 START=$(date +%s.%N)
-PROJECT""
-/usr/bin/gcloud auth activate-service-account --key-file=./img_cleanup/gcr.key --project $PROJECT
 A1=( `/usr/bin/gcloud container images list --repository gcr.io/$PROJECT` )
-PATH_File="./img_cleanup"
-List_File="$PATH_File/image_list_template.tmp"
+
+
+/usr/bin/gcloud auth activate-service-account --key-file=$CURRENT_PATH/$AUTH_KEY --project $PROJECT
 
 if [ ! -f $List_File ]; then touch $List_File; else rm $List_File && touch $List_File; fi
 
@@ -58,7 +71,7 @@ do
   done
 done
 cat $List_File|wc -l
-cp $List_File $PATH_File/images.lst
+cp $List_File $CURRENT_PATH/images.lst
 if [[ $? -eq 0 ]]; then rm $List_File; fi
 END=$(date +%s.%N)
 DIFF=`echo "$END-$START" | bc -l`
